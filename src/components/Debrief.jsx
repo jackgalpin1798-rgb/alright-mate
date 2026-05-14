@@ -174,7 +174,7 @@ function SharePostcard({ scene, result, playerProfile }) {
   )
 }
 
-export default function Debrief({ scene, history, playerProfile, onContinue, onAddXP }) {
+export default function Debrief({ scene, history, playerProfile, onContinue, onNextScene, nextSceneId, onAddXP }) {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [speaking, setSpeaking] = useState(false)
@@ -272,7 +272,7 @@ export default function Debrief({ scene, history, playerProfile, onContinue, onA
       {/* Scene background tint */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 0,
-        backgroundImage: scene.bgPhoto ? `url(${scene.bgPhoto})` : undefined,
+        backgroundImage: scene.bgImage ? `url(${scene.bgImage})` : undefined,
         backgroundSize: 'cover',
         filter: 'blur(8px) brightness(0.15)',
       }} />
@@ -338,18 +338,21 @@ export default function Debrief({ scene, history, playerProfile, onContinue, onA
             <p style={{ color: '#d0c8b8', fontSize: 15, lineHeight: 1.65, margin: 0 }}>{result.debrief}</p>
           </div>
 
-          {/* Highlights */}
-          {result.highlights?.length > 0 && (
-            <div style={sectionStyle}>
-              <div style={{ color: '#7a6a5a', fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>
-                What you did well
+          {/* How to sound more natural */}
+          {(result.naturalTips?.length > 0 || result.highlights?.length > 0) && (
+            <div style={{ ...sectionStyle, borderColor: 'rgba(139,184,212,0.2)', background: 'rgba(139,184,212,0.05)' }}>
+              <div style={{ color: '#8BB8D4', fontSize: 11, fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
+                How to sound more natural
               </div>
-              {result.highlights.map((h, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-                  <span style={{ color: '#4ade80', fontSize: 14, marginTop: 1 }}>✓</span>
-                  <span style={{ color: '#a09080', fontSize: 14 }}>{h}</span>
-                </div>
-              ))}
+              {(result.naturalTips || result.highlights || []).map((tip, i) => {
+                const tips = result.naturalTips || result.highlights || []
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: i < tips.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <span style={{ color: '#8BB8D4', fontSize: 13, marginTop: 1, flexShrink: 0 }}>→</span>
+                    <span style={{ color: '#a09080', fontSize: 13, lineHeight: 1.5 }}>{tip}</span>
+                  </div>
+                )
+              })}
             </div>
           )}
 
@@ -391,26 +394,28 @@ export default function Debrief({ scene, history, playerProfile, onContinue, onA
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <SharePostcard scene={scene} result={result} playerProfile={playerProfile} />
-            <button
-              onClick={onContinue}
-              style={{
-                flex: 1,
-                background: '#C8A45A',
-                border: 'none',
-                borderRadius: 6,
-                color: '#0f0608',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 14,
-                fontWeight: 700,
-                padding: '12px 20px',
-                cursor: 'pointer',
-                letterSpacing: 1,
-              }}
-            >
-              Back to Map →
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+            {nextSceneId && onNextScene && (
+              <button onClick={onNextScene} style={{
+                background: '#C8A45A', border: 'none', borderRadius: 6,
+                color: '#0f0608', fontFamily: 'Inter, sans-serif',
+                fontSize: 15, fontWeight: 700, padding: '14px 20px',
+                cursor: 'pointer', letterSpacing: 0.5,
+              }}>
+                Next stop →
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <SharePostcard scene={scene} result={result} playerProfile={playerProfile} />
+              <button onClick={onContinue} style={{
+                flex: 1, background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
+                color: '#a09080', fontFamily: 'Inter, sans-serif',
+                fontSize: 14, fontWeight: 500, padding: '12px 20px', cursor: 'pointer',
+              }}>
+                Back to map
+              </button>
+            </div>
           </div>
         </div>
       </div>

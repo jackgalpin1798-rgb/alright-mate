@@ -8,7 +8,7 @@ import ConversationScene from './components/ConversationScene'
 import Debrief from './components/Debrief'
 import BillyPhone from './components/BillyPhone'
 import SlangBank from './components/SlangBank'
-import { SCENES } from './data/scenes'
+import { SCENES, SCENE_ORDER } from './data/scenes'
 import { useGameStore, getProfile, saveProfile } from './store/gameStore'
 
 const VIEW = {
@@ -109,7 +109,11 @@ export default function App() {
     // Check if any new scenes unlock
     const newTotal = xp + amount
     if (newTotal >= 60 && !unlockedScenes.includes('caff_morning')) unlockScene('caff_morning')
+    if (newTotal >= 120 && !unlockedScenes.includes('south_bank')) unlockScene('south_bank')
     if (newTotal >= 180 && !unlockedScenes.includes('crown_pub')) unlockScene('crown_pub')
+    if (newTotal >= 200 && !unlockedScenes.includes('kings_cross')) unlockScene('kings_cross')
+    if (newTotal >= 280 && !unlockedScenes.includes('notting_hill')) unlockScene('notting_hill')
+    if (newTotal >= 360 && !unlockedScenes.includes('camden_market')) unlockScene('camden_market')
   }, [addXP, updateStreak, xp, unlockedScenes, unlockScene])
 
   const handleDebriefContinue = useCallback(() => {
@@ -121,6 +125,21 @@ export default function App() {
     setActiveSceneId(null)
     setConversationHistory([])
     setView(VIEW.MAP)
+  }, [activeSceneId, addBillyMessage])
+
+  const handleNextScene = useCallback(() => {
+    const scene = SCENES[activeSceneId]
+    if (scene?.billyMessageAfter) addBillyMessage(scene.billyMessageAfter, activeSceneId)
+    const currentIndex = SCENE_ORDER.indexOf(activeSceneId)
+    const nextId = SCENE_ORDER[currentIndex + 1]
+    setConversationHistory([])
+    if (nextId) {
+      setActiveSceneId(nextId)
+      setView(VIEW.TUBE_RIDE)
+    } else {
+      setActiveSceneId(null)
+      setView(VIEW.MAP)
+    }
   }, [activeSceneId, addBillyMessage])
 
   // Show Billy phone notification after 2s when a new message arrives
@@ -198,15 +217,21 @@ export default function App() {
         />
       )}
 
-      {view === VIEW.DEBRIEF && activeScene && (
-        <Debrief
-          scene={activeScene}
-          history={conversationHistory}
-          playerProfile={playerProfile}
-          onContinue={handleDebriefContinue}
-          onAddXP={handleAddXP}
-        />
-      )}
+      {view === VIEW.DEBRIEF && activeScene && (() => {
+        const currentIndex = SCENE_ORDER.indexOf(activeSceneId)
+        const nextId = SCENE_ORDER[currentIndex + 1]
+        return (
+          <Debrief
+            scene={activeScene}
+            history={conversationHistory}
+            playerProfile={playerProfile}
+            onContinue={handleDebriefContinue}
+            onNextScene={handleNextScene}
+            nextSceneId={nextId || null}
+            onAddXP={handleAddXP}
+          />
+        )
+      })()}
     </>
   )
 }

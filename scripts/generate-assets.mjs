@@ -145,6 +145,24 @@ const assets = [
 
   { dir: 'avatars', name: 'avatar_10', size: 'square_hd',
     prompt: `${AVATAR_STYLE}, older man 50s, distinguished appearance, well-dressed collared shirt, warm confident smile, silver hair` },
+
+  // ── NEW CHARACTERS ──────────────────────────────────────────────────────
+
+  { name: 'jess_neutral',  dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a British-Asian woman in her late 20s, short dark hair styled neatly, wearing smart casual clothing, confident intelligent expression with a slight warm smirk, South Bank London background softly blurred, cinematic lighting, professional digital painting, warm tones, shallow depth of field, film grain' },
+  { name: 'jess_talking',  dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a British-Asian woman in her late 20s, short dark hair, smart casual, speaking mid-sentence, slightly animated expression, South Bank London background softly blurred, cinematic lighting, professional digital painting, warm tones' },
+  { name: 'marcus_neutral', dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a young British-Nigerian man, late 20s, broad warm grin, headphones hanging around neck, casual streetwear hoodie, King\'s Cross station background softly blurred, cinematic lighting, energetic and confident, professional digital painting, film grain' },
+  { name: 'marcus_talking', dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a young British-Nigerian man, late 20s, talking enthusiastically, headphones around neck, casual hoodie, mid-conversation big smile, King\'s Cross background blurred, cinematic warm lighting, professional digital painting' },
+  { name: 'edward_neutral', dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a distinguished British man, mid-50s, silver-grey temples, well-groomed, wearing a smart checked shirt, slight amused expression, Notting Hill street background softly blurred, cinematic lighting, refined and distinguished, professional digital painting, warm afternoon light' },
+  { name: 'edward_talking', dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of a distinguished British man, mid-50s, grey temples, checked shirt, speaking with measured expression, slight eyebrow raised, Notting Hill background blurred, cinematic lighting, professional digital painting, warm tones' },
+  { name: 'brad_neutral',  dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of an American man, early 30s, tech casual attire, slightly confused but friendly expression, messy casual hair, Camden Market background softly blurred, cinematic lighting, approachable and slightly bewildered, professional digital painting, natural tones' },
+  { name: 'brad_talking',  dir: 'characters', w: 768, h: 1024, prompt: 'Photorealistic portrait of an American man, early 30s, tech casual, animated mid-speech expression, self-deprecating smile, Camden Market background blurred, cinematic warm lighting, professional digital painting' },
+
+  // ── NEW SCENES ──────────────────────────────────────────────────────────
+
+  { name: 'south_bank',     dir: 'scenes', w: 1344, h: 768, prompt: 'London South Bank riverside at golden hour, Thames in background, Tate Modern visible, people walking along the embankment, atmospheric hazy light, cinematic widescreen, photorealistic, warm golden tones, slight lens flare, architectural beauty' },
+  { name: 'kings_cross',    dir: 'scenes', w: 1344, h: 768, prompt: 'Interior of King\'s Cross St Pancras train station, London, the magnificent Victorian iron-and-glass roof arching overhead, commuters below, dramatic shafts of light from above, cinematic widescreen, photorealistic, warm atmospheric lighting, grand architecture' },
+  { name: 'notting_hill',   dir: 'scenes', w: 1344, h: 768, prompt: 'Portobello Road Notting Hill London, colourful Victorian terraced houses, market stalls with vintage items, dappled sunlight through trees, charming and vibrant, cinematic widescreen, photorealistic, warm afternoon light, beautiful English architecture' },
+  { name: 'camden_market',  dir: 'scenes', w: 1344, h: 768, prompt: 'Camden Market London, vibrant eclectic market stalls, colourful alternative fashion and food, canal visible in background, energetic crowd, cinematic widescreen, photorealistic, vivid colours, atmospheric overcast London light' },
 ];
 
 async function downloadImage(url, filepath) {

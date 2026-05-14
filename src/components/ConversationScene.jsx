@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { getCharacterReply } from '../services/claudeService'
+import { getCharacterReply, getHintExplanation } from '../services/claudeService'
 import { speak, stopSpeaking, prefetchAudio } from '../services/elevenLabsService'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { useAmbientAudio } from '../hooks/useAmbientAudio'
@@ -16,12 +16,22 @@ const COACHING_INSTRUCTION = `\n\nCOACHING: After your in-character response, ad
 // Entry phases: exterior shown → push-in animation → cross-fade → arrived → conversation
 const ENTRY = { EXTERIOR: 'exterior', ENTERING: 'entering', CROSSFADE: 'crossfade', ARRIVED: 'arrived', STARTED: 'started' }
 
+function stripStageDirections(text) {
+  return text
+    .replace(/\*[^*\n]+\*/g, '')
+    .replace(/\([a-z][a-z\s,]{0,40}\)/g, '')
+    .replace(/\[[^\]\n]{0,40}\]/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .split('\n').map(l => l.trim()).filter(Boolean).join('\n')
+    .trim()
+}
+
 function extractFeedback(text) {
   const lines = text.split('\n')
   const idx = lines.findIndex(l => /^FEEDBACK:/i.test(l.trim()))
-  if (idx === -1) return { clean: text.trim(), feedback: null }
+  if (idx === -1) return { clean: stripStageDirections(text.trim()), feedback: null }
   return {
-    clean: lines.slice(0, idx).join('\n').trim(),
+    clean: stripStageDirections(lines.slice(0, idx).join('\n').trim()),
     feedback: lines[idx].replace(/^FEEDBACK:\s*/i, '').trim(),
   }
 }
@@ -146,6 +156,9 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
   const [subtitleVisible, setSubtitleVisible] = useState(false)
   const [subtitleFading, setSubtitleFading] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('am_mic_onboarded'))
+  const [hintVisible, setHintVisible] = useState(false)
+  const [hintText, setHintText] = useState('')
+  const [hintLoading, setHintLoading] = useState(false)
 
   const historyRef = useRef([])
   const turnCount = useRef(0)
@@ -161,7 +174,7 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
   const { listening, startListening, stopListening, error: micError, supported } = useSpeechRecognition()
 
   const systemPrompt = React.useMemo(() => {
-    const base = scene.getSystemPrompt(playerProfile?.name, playerProfile?.origin)
+    const base = scene.getSystemPrompt(playerProfile?.name, playerProfile?.origin, playerProfile?.difficulty)
     return base + COACHING_INSTRUCTION
   }, [scene.id, playerProfile])
 
@@ -219,6 +232,13 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
 
   const handleUserSpeech = useCallback(async (text) => {
     if (!text.trim() || endingRef.current) return
+    const wrapUpIntent = /\b(let'?s go|ready|head off|shall we|lead the way|alright then|right then|off we go|yeah let'?s|sounds good|after you)\b/i
+    if (scene.isIntroScene && wrapUpIntent.test(text) && turnCount.current >= 2) {
+      addMessage('user', text)
+      await characterSpeak("Sorted! Right, let's get you out of here — cab's just outside. Welcome to London properly, mate!")
+      setTimeout(finishConversation, 2200)
+      return
+    }
     setLiveTranscript('')
     addMessage('user', text)
     setUserTurn(false)
@@ -289,6 +309,21 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
     const text = textInput.trim(); setTextInput('')
     handleUserSpeech(text)
   }, [textInput, userTurn, charSpeaking, handleUserSpeech])
+
+  const handleHint = useCallback(async () => {
+    if (!lastSpokenRef.current || hintLoading) return
+    setHintVisible(true)
+    setHintLoading(true)
+    setHintText('')
+    try {
+      const explanation = await getHintExplanation(lastSpokenRef.current, scene.character.name)
+      setHintText(explanation)
+    } catch {
+      setHintText('Could not load explanation right now.')
+    } finally {
+      setHintLoading(false)
+    }
+  }, [hintLoading, scene.character.name])
 
   const survivalDots = Array.from({ length: SURVIVAL_DOTS_TOTAL }, (_, i) => i >= mistakeCount)
   const isInScene = entryPhase === ENTRY.ARRIVED || entryPhase === ENTRY.STARTED
@@ -370,7 +405,12 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
             {messages.map(m => {
               if (m.role === 'feedback') return <FeedbackNote key={m.id} text={m.content} />
               return (
-                <div key={m.id} className={`bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-char'}`}>
+                <div key={m.id} className={`bubble ${m.role === 'user' ? 'bubble-user' : 'bubble-char'}`}
+                  style={m.role === 'user' ? { display: 'flex', alignItems: 'flex-start', gap: 8 } : {}}>
+                  {m.role === 'user' && playerProfile?.avatarSrc && (
+                    <img src={playerProfile.avatarSrc} alt=""
+                      style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(200,164,90,0.3)', marginTop: 2 }} />
+                  )}
                   <div className="bubble-text">{m.content}</div>
                   {m.role === 'assistant' && (
                     <button className="btn-replay" onClick={() => speak(m.content, scene.character.voiceId, null, null)} title="Replay">
@@ -435,11 +475,28 @@ export default function ConversationScene({ scene, playerProfile, xp, streak, st
             )
           )}
 
+          {hintVisible && (
+            <div style={{
+              background: 'rgba(0,0,0,0.85)', border: '1px solid rgba(200,164,90,0.25)',
+              borderRadius: 8, padding: '10px 14px', maxWidth: 360, fontSize: 13,
+              color: hintLoading ? 'rgba(200,164,90,0.5)' : '#d0c8b8', lineHeight: 1.55,
+              display: 'flex', alignItems: 'flex-start', gap: 10,
+            }}>
+              <span style={{ color: '#C8A45A', fontSize: 11, fontWeight: 600, letterSpacing: 1, whiteSpace: 'nowrap', marginTop: 1 }}>WHAT?</span>
+              <span style={{ flex: 1 }}>{hintLoading ? 'Looking it up...' : hintText}</span>
+              <button onClick={() => setHintVisible(false)} style={{ background: 'none', border: 'none', color: '#5a4a3a', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, flexShrink: 0 }}>×</button>
+            </div>
+          )}
           <div className="controls-row">
             {listening && <button className="btn-secondary" onClick={stopListening}>Done</button>}
+            {userTurn && !listening && messages.some(m => m.role === 'assistant') && (
+              <button className="btn-secondary" onClick={handleHint} disabled={hintLoading}>
+                What did they mean?
+              </button>
+            )}
             {userTurn && !listening && (
               <button className="btn-secondary" onClick={finishConversation}>
-                End scene · {MAX_TURNS - turnCount.current} turns left
+                End scene
               </button>
             )}
           </div>

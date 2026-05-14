@@ -3,15 +3,23 @@ import { useAmbientAudio } from '../hooks/useAmbientAudio'
 import { SCENES } from '../data/scenes'
 
 const LINE_STATIONS = {
-  piccadilly: ['Heathrow T5', 'Hatton Cross', 'Hounslow West', 'Osterley', 'Boston Manor', 'South Ealing', 'Acton Town', 'Hammersmith', 'Barons Court', 'Earls Court', 'South Kensington', 'Knightsbridge', 'Hyde Park Corner', 'Green Park', 'Piccadilly Circus', 'Leicester Square', 'Covent Garden', 'Holborn', 'Russell Square', 'King\'s Cross'],
-  central:    ['Liverpool Street', 'Bethnal Green', 'Mile End', 'Bow Road', 'Stratford'],
-  overground: ['Liverpool Street', 'Shoreditch High St'],
+  piccadilly: ['Heathrow T5', 'Hatton Cross', 'Hounslow West', 'South Ealing', 'Acton Town', 'Hammersmith', 'Earls Court', 'South Kensington', 'Knightsbridge', 'Hyde Park Corner', 'Green Park', 'Piccadilly Circus', 'Leicester Square', 'Covent Garden', "King's Cross"],
+  central:    ['Liverpool Street', 'Bethnal Green', 'Mile End', 'Stratford'],
+  overground: ['Highbury & Islington', 'Haggerston', 'Hoxton', 'Shoreditch High St'],
+  jubilee:    ['Waterloo', 'Southwark', 'London Bridge', 'Bermondsey', 'Canada Water'],
+  victoria:   ['Victoria', 'Green Park', 'Oxford Circus', 'Warren Street', "King's Cross"],
+  district:   ["Earl's Court", 'High Street Kensington', 'Notting Hill Gate'],
+  northern:   ['Euston', 'Mornington Crescent', 'Camden Town'],
 }
 
 const LINE_COLORS = {
   piccadilly: '#0019A8',
   central:    '#E32017',
   overground: '#EF7B10',
+  jubilee:    '#A0A5AE',
+  victoria:   '#0098D4',
+  district:   '#00782A',
+  northern:   '#333333',
 }
 
 export default function TubeRide({ destinationId, onArrived }) {

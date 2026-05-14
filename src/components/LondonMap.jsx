@@ -4,30 +4,13 @@ import { getLevel, LEVELS } from '../store/gameStore'
 
 // Station layout for the Underground-style map
 const STATIONS = [
-  {
-    id: 'heathrow_arrivals',
-    label: 'HEATHROW T5',
-    x: 0.1,
-    y: 0.62,
-    line: 'piccadilly',
-    color: '#0019A8',
-  },
-  {
-    id: 'caff_morning',
-    label: 'BETHNAL GREEN',
-    x: 0.5,
-    y: 0.38,
-    line: 'central',
-    color: '#E32017',
-  },
-  {
-    id: 'crown_pub',
-    label: 'SHOREDITCH',
-    x: 0.8,
-    y: 0.28,
-    line: 'overground',
-    color: '#EF7B10',
-  },
+  { id: 'heathrow_arrivals', label: 'HEATHROW T5',   x: 0.08, y: 0.65, line: 'piccadilly', color: '#0019A8' },
+  { id: 'caff_morning',      label: 'BETHNAL GREEN',  x: 0.55, y: 0.40, line: 'central',    color: '#E32017' },
+  { id: 'crown_pub',         label: 'SHOREDITCH',     x: 0.75, y: 0.30, line: 'overground', color: '#EF7B10' },
+  { id: 'south_bank',        label: 'SOUTH BANK',     x: 0.55, y: 0.65, line: 'jubilee',    color: '#A0A5AE' },
+  { id: 'kings_cross',       label: "KING'S CROSS",   x: 0.48, y: 0.18, line: 'victoria',   color: '#0098D4' },
+  { id: 'notting_hill',      label: 'NOTTING HILL',   x: 0.18, y: 0.36, line: 'district',   color: '#00782A' },
+  { id: 'camden_market',     label: 'CAMDEN',         x: 0.35, y: 0.10, line: 'northern',   color: '#333333' },
 ]
 
 function XPBar({ xp }) {
@@ -116,20 +99,29 @@ export default function LondonMap({ xp, streak, streakShields, unlockedScenes, o
       ctx.font = 'italic 10px Inter, sans-serif'
       ctx.fillText('River Thames', W * 0.1, thamesY + 30)
 
-      // Draw tube lines connecting stations (simplified diagonal lines — Beck style)
-      for (let i = 0; i < STATIONS.length - 1; i++) {
-        const s1 = STATIONS[i]
-        const s2 = STATIONS[i + 1]
-        const x1 = s1.x * W, y1 = s1.y * H
-        const x2 = s2.x * W, y2 = s2.y * H
-        const unlocked = unlockedScenes.includes(s2.id)
-
-        // 45-degree elbow routing (Beck style)
+      // Draw logical tube connections
+      const CONNECTIONS = [
+        ['heathrow_arrivals', 'notting_hill'],
+        ['notting_hill', 'south_bank'],
+        ['south_bank', 'caff_morning'],
+        ['caff_morning', 'crown_pub'],
+        ['caff_morning', 'kings_cross'],
+        ['kings_cross', 'camden_market'],
+      ]
+      CONNECTIONS.forEach(([aId, bId]) => {
+        const a = STATIONS.find(s => s.id === aId)
+        const b = STATIONS.find(s => s.id === bId)
+        if (!a || !b) return
+        const x1 = a.x * W, y1 = a.y * H
+        const x2 = b.x * W, y2 = b.y * H
+        const bothUnlocked = unlockedScenes.includes(aId) && unlockedScenes.includes(bId)
+        const eitherUnlocked = unlockedScenes.includes(aId) || unlockedScenes.includes(bId)
+        const lineColor = eitherUnlocked ? b.color : '#c8c0b8'
         const dx = x2 - x1, dy = y2 - y1
-        const elbowX = x1 + dx * 0.5
-        const elbowY = y1
-
-        ctx.strokeStyle = unlocked ? s2.color : '#c8c0b8'
+        const isHoriz = Math.abs(dx) > Math.abs(dy)
+        const elbowX = isHoriz ? x1 + dx * 0.5 : x2
+        const elbowY = isHoriz ? y1 : y1 + dy * 0.5
+        ctx.strokeStyle = lineColor
         ctx.lineWidth = 5
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
@@ -138,16 +130,14 @@ export default function LondonMap({ xp, streak, streakShields, unlockedScenes, o
         ctx.lineTo(elbowX, elbowY)
         ctx.lineTo(x2, y2)
         ctx.stroke()
-
-        // White core line
         ctx.strokeStyle = '#F0EBE0'
-        ctx.lineWidth = 2
+        ctx.lineWidth = 1.5
         ctx.beginPath()
         ctx.moveTo(x1, y1)
         ctx.lineTo(elbowX, elbowY)
         ctx.lineTo(x2, y2)
         ctx.stroke()
-      }
+      })
 
       // Draw stations
       STATIONS.forEach(station => {
