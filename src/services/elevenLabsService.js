@@ -12,6 +12,30 @@ let currentAudio = null
 let currentUtterance = null
 const prefetchCache = new Map()
 
+// Audio analyser for lip sync — exposed so components can read amplitude
+let _audioCtx = null
+let _analyser = null
+let _analyserData = null
+
+function getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+    _analyser = _audioCtx.createAnalyser()
+    _analyser.fftSize = 256
+    _analyser.smoothingTimeConstant = 0.6
+    _analyserData = new Uint8Array(_analyser.frequencyBinCount)
+    _analyser.connect(_audioCtx.destination)
+  }
+  return { ctx: _audioCtx, analyser: _analyser }
+}
+
+export function getAmplitude() {
+  if (!_analyser || !_analyserData) return 0
+  _analyser.getByteFrequencyData(_analyserData)
+  const sum = _analyserData.reduce((a, b) => a + b, 0)
+  return sum / _analyserData.length / 255
+}
+
 function browserSpeak(text, onEnd) {
   window.speechSynthesis.cancel()
   const u = new SpeechSynthesisUtterance(text)
@@ -34,7 +58,17 @@ async function elFetch(voiceId, text) {
 
 function playUrl(url, onStart, onEnd, text) {
   const audio = new Audio(url)
+  audio.crossOrigin = 'anonymous'
   currentAudio = audio
+
+  // Wire up amplitude analyser
+  try {
+    const { ctx, analyser } = getAudioCtx()
+    if (ctx.state === 'suspended') ctx.resume()
+    const source = ctx.createMediaElementSource(audio)
+    source.connect(analyser)
+  } catch {}
+
   audio.onplay = () => onStart?.()
   audio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; onEnd?.() }
   audio.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; browserSpeak(text, onEnd) }

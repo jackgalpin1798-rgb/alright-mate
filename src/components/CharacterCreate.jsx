@@ -1,255 +1,239 @@
 import React, { useState } from 'react'
-import { saveProfile } from '../store/gameStore'
+
+const AVATARS = Array.from({ length: 10 }, (_, i) => ({
+  id: i + 1,
+  src: `/assets/avatars/avatar_${String(i + 1).padStart(2, '0')}.png`,
+}))
 
 const ORIGINS = [
-  { value: 'USA', label: '🇺🇸 United States' },
-  { value: 'Australia', label: '🇦🇺 Australia' },
-  { value: 'Canada', label: '🇨🇦 Canada' },
-  { value: 'France', label: '🇫🇷 France' },
-  { value: 'Germany', label: '🇩🇪 Germany' },
-  { value: 'Spain', label: '🇪🇸 Spain' },
-  { value: 'Italy', label: '🇮🇹 Italy' },
-  { value: 'Japan', label: '🇯🇵 Japan' },
-  { value: 'Brazil', label: '🇧🇷 Brazil' },
-  { value: 'India', label: '🇮🇳 India' },
-  { value: 'China', label: '🇨🇳 China' },
-  { value: 'Korea', label: '🇰🇷 Korea' },
-  { value: 'Mexico', label: '🇲🇽 Mexico' },
+  { value: 'USA',       label: '🇺🇸 United States' },
   { value: 'Argentina', label: '🇦🇷 Argentina' },
-  { value: 'Poland', label: '🇵🇱 Poland' },
+  { value: 'Australia', label: '🇦🇺 Australia' },
+  { value: 'Brazil',    label: '🇧🇷 Brazil' },
+  { value: 'Canada',    label: '🇨🇦 Canada' },
+  { value: 'France',    label: '🇫🇷 France' },
+  { value: 'Germany',   label: '🇩🇪 Germany' },
+  { value: 'India',     label: '🇮🇳 India' },
+  { value: 'Italy',     label: '🇮🇹 Italy' },
+  { value: 'Japan',     label: '🇯🇵 Japan' },
+  { value: 'Spain',     label: '🇪🇸 Spain' },
   { value: 'elsewhere', label: '🌍 Somewhere else' },
 ]
 
 const REASONS = [
-  { value: 'tourism', label: 'Visiting as a tourist' },
-  { value: 'work', label: 'Moving here for work' },
-  { value: 'study', label: 'Studying here' },
-  { value: 'family', label: 'Got family here' },
+  { value: 'tourism',  label: 'Visiting as a tourist' },
+  { value: 'work',     label: 'Moving here for work' },
+  { value: 'study',    label: 'Studying here' },
+  { value: 'family',   label: 'Got family here' },
   { value: 'gap_year', label: 'Gap year adventure' },
-  { value: 'love', label: "Followed someone here" },
+  { value: 'love',     label: 'Followed someone here' },
 ]
 
-const inputStyle = {
-  width: '100%',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(200,164,90,0.3)',
-  borderRadius: 4,
-  color: '#F5F0E8',
-  fontFamily: 'Inter, sans-serif',
-  fontSize: 16,
-  padding: '12px 16px',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color 0.2s',
-}
-
-const labelStyle = {
-  display: 'block',
-  color: '#a09080',
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: 2,
-  textTransform: 'uppercase',
-  marginBottom: 8,
-}
+const STEPS = ['avatar', 'name', 'origin', 'reason']
 
 export default function CharacterCreate({ onComplete }) {
+  const [step, setStep] = useState(0)
+  const [avatar, setAvatar] = useState(null)
   const [name, setName] = useState('')
   const [origin, setOrigin] = useState('')
   const [reason, setReason] = useState('')
-  const [step, setStep] = useState(0)
 
-  const handleSubmit = () => {
-    if (!name.trim()) return
-    const profile = {
-      name: name.trim(),
-      origin: origin || 'abroad',
-      reason: reason || 'tourism',
-      createdAt: Date.now(),
-    }
-    saveProfile(profile)
-    onComplete(profile)
+  const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1))
+
+  const finish = () => {
+    onComplete({ name: name.trim(), origin, reason, avatarSrc: AVATARS.find(a => a.id === avatar)?.src })
   }
-
-  const canProceed = step === 0 ? name.trim().length > 0 : step === 1 ? origin !== '' : reason !== ''
 
   return (
     <div style={{
-      position: 'fixed', inset: 0,
-      background: '#0f0608',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
+      position: 'fixed', inset: 0, background: '#0a0804',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: '24px', fontFamily: "'Inter', sans-serif",
     }}>
-      {/* Background gradient */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 50% 60%, rgba(200,164,90,0.06) 0%, transparent 65%)',
-        pointerEvents: 'none',
-      }} />
+      {/* Progress dots */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 40 }}>
+        {STEPS.map((_, i) => (
+          <div key={i} style={{
+            width: i === step ? 24 : 8, height: 8, borderRadius: 4,
+            background: i <= step ? '#C8A45A' : 'rgba(255,255,255,0.1)',
+            transition: 'all 0.3s',
+          }} />
+        ))}
+      </div>
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 440 }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ color: '#C8A45A', fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 12 }}>
-            Before you land
+      {/* Step 0: Avatar */}
+      {step === 0 && (
+        <div style={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: '#F5F0E8', marginBottom: 8 }}>
+            Who are you?
           </div>
-          <h2 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: 32,
-            fontWeight: 700,
-            color: '#F5F0E8',
-            margin: 0,
+          <div style={{ color: '#7a6a5a', fontSize: 14, marginBottom: 32, letterSpacing: 1 }}>
+            Pick your traveller
+          </div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12,
+            marginBottom: 32,
           }}>
-            {step === 0 ? "What's your name?" : step === 1 ? "Where are you from?" : "Why London?"}
-          </h2>
-          <p style={{ color: '#7a6a5a', fontSize: 14, marginTop: 8 }}>
-            {step === 0 ? "Billy will use it — make it easy to say in a Cockney accent."
-             : step === 1 ? "The characters will know where you're from. It'll come up."
-             : "Your reason changes how Billy introduces you to people."}
-          </p>
-        </div>
-
-        {/* Progress dots */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 32 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: i === step ? 24 : 8,
-              height: 8,
-              borderRadius: 4,
-              background: i <= step ? '#C8A45A' : '#3a2a1a',
-              transition: 'all 0.3s ease',
-            }} />
-          ))}
-        </div>
-
-        {/* Step 0: Name */}
-        {step === 0 && (
-          <div>
-            <label style={labelStyle}>Your name</label>
-            <input
-              style={inputStyle}
-              type="text"
-              placeholder="e.g. Alex, Maria, Kenji..."
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && canProceed) setStep(1) }}
-              autoFocus
-              maxLength={24}
-              onFocus={e => { e.target.style.borderColor = 'rgba(200,164,90,0.7)' }}
-              onBlur={e => { e.target.style.borderColor = 'rgba(200,164,90,0.3)' }}
-            />
+            {AVATARS.map(a => (
+              <div
+                key={a.id}
+                onClick={() => setAvatar(a.id)}
+                style={{
+                  borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                  border: `2px solid ${avatar === a.id ? '#C8A45A' : 'rgba(255,255,255,0.08)'}`,
+                  boxShadow: avatar === a.id ? '0 0 16px rgba(200,164,90,0.35)' : 'none',
+                  transform: avatar === a.id ? 'scale(1.06)' : 'scale(1)',
+                  transition: 'all 0.2s', aspectRatio: '1/1',
+                }}
+              >
+                <img src={a.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </div>
+            ))}
           </div>
-        )}
-
-        {/* Step 1: Origin */}
-        {step === 1 && (
-          <div>
-            <label style={labelStyle}>Country of origin</label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 8,
-              maxHeight: 300,
-              overflowY: 'auto',
-            }}>
-              {ORIGINS.map(o => (
-                <button
-                  key={o.value}
-                  onClick={() => setOrigin(o.value)}
-                  style={{
-                    background: origin === o.value ? 'rgba(200,164,90,0.15)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${origin === o.value ? '#C8A45A' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 4,
-                    color: origin === o.value ? '#C8A45A' : '#a09080',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 13,
-                    padding: '10px 14px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Reason */}
-        {step === 2 && (
-          <div>
-            <label style={labelStyle}>Why are you in London?</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {REASONS.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => setReason(r.value)}
-                  style={{
-                    background: reason === r.value ? 'rgba(200,164,90,0.15)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${reason === r.value ? '#C8A45A' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 4,
-                    color: reason === r.value ? '#C8A45A' : '#a09080',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 14,
-                    padding: '12px 16px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-          {step > 0 && (
-            <button
-              onClick={() => setStep(s => s - 1)}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 4,
-                color: '#7a6a5a',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 14,
-                padding: '14px',
-                cursor: 'pointer',
-              }}
-            >
-              ← Back
-            </button>
-          )}
           <button
-            onClick={() => step < 2 ? setStep(s => s + 1) : handleSubmit()}
-            disabled={!canProceed}
+            onClick={next} disabled={!avatar}
             style={{
-              flex: 3,
-              background: canProceed ? '#C8A45A' : '#2a1a0a',
-              border: 'none',
-              borderRadius: 4,
-              color: canProceed ? '#0f0608' : '#5a4a3a',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              padding: '14px',
-              cursor: canProceed ? 'pointer' : 'not-allowed',
+              background: avatar ? 'rgba(200,164,90,0.2)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${avatar ? 'rgba(200,164,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8, color: avatar ? '#C8A45A' : '#4a4040',
+              fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 600,
+              padding: '14px 40px', cursor: avatar ? 'pointer' : 'not-allowed',
+              letterSpacing: 1, transition: 'all 0.2s',
+            }}
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+
+      {/* Step 1: Name */}
+      {step === 1 && (
+        <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+          {avatar && (
+            <img
+              src={AVATARS.find(a => a.id === avatar)?.src}
+              alt=""
+              style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', marginBottom: 24, border: '2px solid rgba(200,164,90,0.4)' }}
+            />
+          )}
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: '#F5F0E8', marginBottom: 8 }}>
+            What's your name?
+          </div>
+          <div style={{ color: '#7a6a5a', fontSize: 14, marginBottom: 28 }}>
+            Billy will use this to greet you
+          </div>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && name.trim()) next() }}
+            placeholder="Your name"
+            autoFocus
+            style={{
+              width: '100%', background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(200,164,90,0.3)',
+              borderRadius: 8, color: '#F5F0E8', fontFamily: "'Inter', sans-serif",
+              fontSize: 18, padding: '14px 18px', outline: 'none', marginBottom: 24, boxSizing: 'border-box',
+              textAlign: 'center',
+            }}
+          />
+          <button
+            onClick={next} disabled={!name.trim()}
+            style={{
+              background: name.trim() ? 'rgba(200,164,90,0.2)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${name.trim() ? 'rgba(200,164,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8, color: name.trim() ? '#C8A45A' : '#4a4040',
+              fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 600,
+              padding: '14px 40px', cursor: name.trim() ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}
           >
-            {step < 2 ? 'Next →' : "Land in London →"}
+            Continue →
           </button>
         </div>
-      </div>
+      )}
+
+      {/* Step 2: Origin */}
+      {step === 2 && (
+        <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: '#F5F0E8', marginBottom: 8 }}>
+            Where are you from?
+          </div>
+          <div style={{ color: '#7a6a5a', fontSize: 14, marginBottom: 28 }}>
+            Billy will tailor his banter
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 28 }}>
+            {ORIGINS.map(o => (
+              <button
+                key={o.value}
+                onClick={() => setOrigin(o.value)}
+                style={{
+                  background: origin === o.value ? 'rgba(200,164,90,0.2)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${origin === o.value ? 'rgba(200,164,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 8, color: origin === o.value ? '#C8A45A' : '#a09080',
+                  fontFamily: "'Inter', sans-serif", fontSize: 13, padding: '11px 8px',
+                  cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={next} disabled={!origin}
+            style={{
+              background: origin ? 'rgba(200,164,90,0.2)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${origin ? 'rgba(200,164,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8, color: origin ? '#C8A45A' : '#4a4040',
+              fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 600,
+              padding: '14px 40px', cursor: origin ? 'pointer' : 'not-allowed', transition: 'all 0.2s',
+            }}
+          >
+            Continue →
+          </button>
+        </div>
+      )}
+
+      {/* Step 3: Reason */}
+      {step === 3 && (
+        <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, color: '#F5F0E8', marginBottom: 8 }}>
+            Why are you in London?
+          </div>
+          <div style={{ color: '#7a6a5a', fontSize: 14, marginBottom: 28 }}>
+            Sets the scene for your conversations
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
+            {REASONS.map(r => (
+              <button
+                key={r.value}
+                onClick={() => setReason(r.value)}
+                style={{
+                  background: reason === r.value ? 'rgba(200,164,90,0.2)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${reason === r.value ? 'rgba(200,164,90,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 8, color: reason === r.value ? '#C8A45A' : '#a09080',
+                  fontFamily: "'Inter', sans-serif", fontSize: 14, padding: '13px 20px',
+                  cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left',
+                }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={finish} disabled={!reason}
+            style={{
+              background: reason ? 'rgba(200,164,90,0.25)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${reason ? 'rgba(200,164,90,0.6)' : 'rgba(255,255,255,0.1)'}`,
+              borderRadius: 8, color: reason ? '#C8A45A' : '#4a4040',
+              fontFamily: "'Inter', sans-serif", fontSize: 15, fontWeight: 600,
+              padding: '16px 48px', cursor: reason ? 'pointer' : 'not-allowed', transition: 'all 0.2s',
+              boxShadow: reason ? '0 0 20px rgba(200,164,90,0.15)' : 'none',
+            }}
+          >
+            Let's go →
+          </button>
+        </div>
+      )}
     </div>
   )
 }

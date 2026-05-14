@@ -4,280 +4,199 @@ import { speak } from '../services/elevenLabsService'
 const NARRATOR_VOICE = import.meta.env.VITE_VOICE_NARRATOR
 const BILLY_VOICE = import.meta.env.VITE_VOICE_BILLY
 
+const PHASE = { CLOUDS: 0, DESCENT: 1, TAXI: 2 }
+
 const NARRATOR_LINES = [
-  "London. A city of 9 million people who all know exactly what they mean.",
-  "You are not one of them. Yet.",
+  "London. Eight million people. One language. Spoken entirely differently by every single one of them.",
+  "You've got the basics. But down there — that's where English gets interesting.",
 ]
 
-const BILLY_CINEMATIC_LINE = "Oi. You made it then. Right, let's get you sorted, shall we?"
+const BILLY_LINE = "Oi oi! Yeah that's me down in arrivals. Can't miss me — I'm the one holding the sign with the spelling mistake. See ya in a minute, yeah? Alright!"
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)) }
+function speakLine(voiceId, text) { return new Promise(r => speak(text, voiceId, null, r)) }
 
 export default function CinematicIntro({ playerName, onComplete }) {
-  const canvasRef = useRef(null)
-  const [phase, setPhase] = useState(0) // 0=city-title, 1=narrator, 2=billy, 3=done
-  const [lineIndex, setLineIndex] = useState(0)
-  const [text, setText] = useState('')
-  const [visible, setVisible] = useState(true)
+  const [phase, setPhase] = useState(PHASE.CLOUDS)
+  const [subtitle, setSubtitle] = useState('')
+  const [subtitleOn, setSubtitleOn] = useState(false)
+  const [skippable, setSkippable] = useState(false)
+  const cancelledRef = useRef(false)
+
+  const skip = () => { if (skippable) { cancelledRef.current = true; onComplete() } }
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    canvas.width = canvas.offsetWidth || window.innerWidth
-    canvas.height = canvas.offsetHeight || window.innerHeight
-    const W = canvas.width, H = canvas.height
+    cancelledRef.current = false
+    const skippableTimer = setTimeout(() => setSkippable(true), 2000)
 
-    let t = 0
-    let raf
+    async function run() {
+      setPhase(PHASE.CLOUDS)
+      await wait(600)
 
-    // City silhouette points (London skyline — simplified)
-    const skyline = [
-      // Left buildings
-      { x: 0, y: H }, { x: 0, y: H * 0.72 }, { x: W * 0.04, y: H * 0.72 },
-      { x: W * 0.04, y: H * 0.65 }, { x: W * 0.08, y: H * 0.65 },
-      { x: W * 0.08, y: H * 0.7 }, { x: W * 0.11, y: H * 0.7 },
-      { x: W * 0.11, y: H * 0.58 }, // Taller
-      // BT Tower-ish
-      { x: W * 0.14, y: H * 0.58 }, { x: W * 0.14, y: H * 0.38 },
-      { x: W * 0.152, y: H * 0.38 }, { x: W * 0.152, y: H * 0.42 },
-      { x: W * 0.16, y: H * 0.42 }, { x: W * 0.16, y: H * 0.62 },
-      { x: W * 0.2, y: H * 0.62 }, { x: W * 0.2, y: H * 0.55 },
-      { x: W * 0.24, y: H * 0.55 }, { x: W * 0.24, y: H * 0.68 },
-      // Centre — Shard
-      { x: W * 0.3, y: H * 0.68 }, { x: W * 0.32, y: H * 0.28 },
-      { x: W * 0.34, y: H * 0.68 }, { x: W * 0.38, y: H * 0.68 },
-      { x: W * 0.38, y: H * 0.55 }, { x: W * 0.42, y: H * 0.55 },
-      { x: W * 0.42, y: H * 0.6 },
-      // Gherkin-ish
-      { x: W * 0.47, y: H * 0.6 }, { x: W * 0.48, y: H * 0.45 },
-      { x: W * 0.5, y: H * 0.42 }, { x: W * 0.52, y: H * 0.45 },
-      { x: W * 0.53, y: H * 0.6 }, { x: W * 0.56, y: H * 0.6 },
-      { x: W * 0.56, y: H * 0.52 }, { x: W * 0.6, y: H * 0.52 },
-      { x: W * 0.6, y: H * 0.65 }, { x: W * 0.64, y: H * 0.65 },
-      // Canary Wharf side
-      { x: W * 0.64, y: H * 0.55 }, { x: W * 0.67, y: H * 0.35 },
-      { x: W * 0.69, y: H * 0.35 }, { x: W * 0.69, y: H * 0.55 },
-      { x: W * 0.72, y: H * 0.55 }, { x: W * 0.72, y: H * 0.62 },
-      { x: W * 0.78, y: H * 0.62 }, { x: W * 0.78, y: H * 0.7 },
-      { x: W * 0.85, y: H * 0.7 }, { x: W * 0.85, y: H * 0.75 },
-      { x: W, y: H * 0.75 }, { x: W, y: H },
-    ]
-
-    const draw = () => {
-      t += 0.016
-      ctx.clearRect(0, 0, W, H)
-
-      // Sky gradient
-      const sky = ctx.createLinearGradient(0, 0, 0, H)
-      sky.addColorStop(0, '#04010a')
-      sky.addColorStop(0.5, '#0a0416')
-      sky.addColorStop(1, '#160a02')
-      ctx.fillStyle = sky
-      ctx.fillRect(0, 0, W, H)
-
-      // Stars
-      for (let i = 0; i < 80; i++) {
-        const sx = (Math.sin(i * 127.3) * 0.5 + 0.5) * W
-        const sy = (Math.sin(i * 83.7) * 0.5 + 0.5) * H * 0.6
-        const sa = 0.3 + 0.4 * Math.sin(t * (1 + i * 0.1) + i)
-        ctx.fillStyle = `rgba(255,255,255,${sa})`
-        ctx.beginPath()
-        ctx.arc(sx, sy, 0.6, 0, Math.PI * 2)
-        ctx.fill()
+      for (const line of NARRATOR_LINES) {
+        if (cancelledRef.current) return
+        setSubtitle(line); setSubtitleOn(true)
+        await speakLine(NARRATOR_VOICE, line)
+        if (cancelledRef.current) return
+        setSubtitleOn(false); await wait(500)
       }
 
-      // Thames glow
-      const thames = ctx.createLinearGradient(0, H * 0.72, 0, H)
-      thames.addColorStop(0, `rgba(30,50,80,${0.3 + Math.sin(t * 0.3) * 0.05})`)
-      thames.addColorStop(1, 'rgba(10,20,40,0.6)')
-      ctx.fillStyle = thames
-      ctx.fillRect(0, H * 0.72, W, H * 0.28)
+      if (cancelledRef.current) return
+      setPhase(PHASE.DESCENT); await wait(2200)
 
-      // Water shimmer
-      for (let i = 0; i < 15; i++) {
-        const wx = (i / 15) * W + Math.sin(t * 1.2 + i) * 20
-        const wy = H * 0.78 + Math.sin(t * 0.8 + i * 0.7) * 5
-        ctx.strokeStyle = `rgba(80,120,180,${0.1 + Math.sin(t * 2 + i) * 0.06})`
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(wx, wy)
-        ctx.lineTo(wx + 30, wy)
-        ctx.stroke()
-      }
-
-      // London city silhouette
-      ctx.fillStyle = '#04010a'
-      ctx.beginPath()
-      ctx.moveTo(skyline[0].x, skyline[0].y)
-      skyline.forEach(p => ctx.lineTo(p.x, p.y))
-      ctx.closePath()
-      ctx.fill()
-
-      // Window lights in buildings
-      const buildingDark = '#04010a'
-      for (let i = 0; i < 60; i++) {
-        const wx = (Math.sin(i * 93.1) * 0.5 + 0.5) * W
-        const wy = (Math.sin(i * 57.3) * 0.5 + 0.5) * H * 0.65
-        // Check if this point is in the skyline (approximate — just render all, they clip naturally)
-        const wa = 0.4 + 0.5 * Math.sin(t * (0.2 + i * 0.05) + i)
-        const wcolor = Math.random() > 0.7 ? `rgba(255,220,150,${wa * 0.6})` : `rgba(200,220,255,${wa * 0.4})`
-        ctx.fillStyle = wcolor
-        ctx.fillRect(wx, wy, 2, 3)
-      }
-
-      // Red bus silhouette crossing left to right
-      const busX = ((t * 18) % (W + 100)) - 60
-      const busY = H * 0.74
-      ctx.fillStyle = '#C41E3A'
-      ctx.fillRect(busX, busY - 18, 55, 18)
-      ctx.fillStyle = '#a01830'
-      ctx.fillRect(busX, busY - 32, 55, 14)
-      ctx.fillStyle = '#f0e8d0'
-      for (let w = 0; w < 5; w++) {
-        ctx.fillRect(busX + 4 + w * 10, busY - 28, 6, 8)
-      }
-      // Wheels
-      ctx.fillStyle = '#1a1a1a'
-      ctx.beginPath(); ctx.arc(busX + 12, busY + 2, 6, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.arc(busX + 43, busY + 2, 6, 0, Math.PI * 2); ctx.fill()
-
-      raf = requestAnimationFrame(draw)
+      if (cancelledRef.current) return
+      setPhase(PHASE.TAXI); await wait(400)
+      setSubtitle(BILLY_LINE); setSubtitleOn(true)
+      await speakLine(BILLY_VOICE, BILLY_LINE)
+      if (cancelledRef.current) return
+      setSubtitleOn(false); await wait(400)
+      if (!cancelledRef.current) onComplete()
     }
-    draw()
-    return () => cancelAnimationFrame(raf)
-  }, [])
 
-  // Sequence the cinematic
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      // Phase 0: show city title
-      await new Promise(r => setTimeout(r, 2000))
-      if (cancelled) return
-
-      // Phase 1: narrator speaks
-      setPhase(1)
-      for (let i = 0; i < NARRATOR_LINES.length; i++) {
-        if (cancelled) return
-        setText(NARRATOR_LINES[i])
-        setVisible(true)
-        await new Promise(res => {
-          speak(NARRATOR_LINES[i], NARRATOR_VOICE, null, res).catch(res)
-        })
-        if (cancelled) return
-        await new Promise(r => setTimeout(r, 800))
-        if (i < NARRATOR_LINES.length - 1) {
-          setVisible(false)
-          await new Promise(r => setTimeout(r, 500))
-        }
-      }
-
-      // Phase 2: Billy speaks
-      if (cancelled) return
-      setVisible(false)
-      await new Promise(r => setTimeout(r, 400))
-      setPhase(2)
-      setText(BILLY_CINEMATIC_LINE)
-      setVisible(true)
-      await new Promise(res => {
-        speak(BILLY_CINEMATIC_LINE, BILLY_VOICE, null, res).catch(res)
-      })
-      if (cancelled) return
-      await new Promise(r => setTimeout(r, 1200))
-      if (!cancelled) onComplete()
-    }
     run()
-    return () => { cancelled = true }
+    return () => { cancelledRef.current = true; clearTimeout(skippableTimer) }
   }, [])
+
+  const bgSrc = phase === PHASE.TAXI
+    ? '/assets/scenes/taxi_interior.png'
+    : phase === PHASE.DESCENT
+      ? '/assets/scenes/plane_descent_london.png'
+      : '/assets/scenes/plane_window_clouds.png'
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: '#04010a',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-
-      {/* City title */}
-      {phase === 0 && (
-        <div style={{
-          position: 'relative', zIndex: 1, textAlign: 'center',
-          animation: 'fadeIn 1s ease',
-        }}>
-          <div style={{ color: '#7a6a5a', fontSize: 12, letterSpacing: 6, textTransform: 'uppercase', marginBottom: 8 }}>
-            You are arriving in
-          </div>
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: 'clamp(52px, 12vw, 100px)',
-            fontWeight: 900,
-            color: '#F5F0E8',
-            letterSpacing: 4,
-            margin: 0,
-            textShadow: '0 0 60px rgba(200,164,90,0.3)',
-          }}>
-            LONDON
-          </h1>
-          <div style={{ width: 80, height: 2, background: '#C8A45A', margin: '16px auto 0' }} />
-        </div>
-      )}
-
-      {/* Narrator / Billy text */}
-      {phase >= 1 && (
-        <div style={{
-          position: 'absolute',
-          bottom: '15%',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '90%',
-          maxWidth: 560,
-          textAlign: 'center',
-          zIndex: 1,
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 0.4s ease',
-        }}>
-          {phase === 2 && (
-            <div style={{ color: '#C8A45A', fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 10 }}>
-              Billy
-            </div>
-          )}
-          <p style={{
-            fontFamily: phase === 2 ? 'Inter, sans-serif' : "'Playfair Display', serif",
-            fontSize: phase === 2 ? 18 : 22,
-            color: '#F5F0E8',
-            lineHeight: 1.5,
-            margin: 0,
-            textShadow: '0 2px 20px rgba(0,0,0,0.8)',
-          }}>
-            {text}
-          </p>
-        </div>
-      )}
-
-      {/* Skip button */}
-      <button
-        onClick={onComplete}
+    <div
+      onClick={skip}
+      style={{
+        position: 'fixed', inset: 0, background: '#000', overflow: 'hidden',
+        fontFamily: "'Inter', sans-serif", cursor: skippable ? 'pointer' : 'default',
+      }}
+    >
+      {/* Background */}
+      <img
+        key={bgSrc}
+        src={bgSrc}
+        alt=""
         style={{
-          position: 'absolute',
-          top: 20, right: 20,
-          background: 'rgba(255,255,255,0.08)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 4,
-          color: '#7a6a5a',
-          fontFamily: 'Inter, sans-serif',
-          fontSize: 12,
-          letterSpacing: 1,
-          padding: '8px 16px',
-          cursor: 'pointer',
-          zIndex: 10,
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'center',
+          animation: phase === PHASE.CLOUDS
+            ? 'cinemaDrift 10s ease-in-out infinite alternate'
+            : 'cinemaFadeIn 1.2s ease',
         }}
-      >
-        Skip →
-      </button>
+      />
 
-      <style>{`@keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      {/* Vignette */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.55) 100%)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Letterbox bars */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '8%', background: '#000' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '8%', background: '#000' }} />
+
+      {/* London title card on descent */}
+      {phase === PHASE.DESCENT && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -55%)',
+          textAlign: 'center', animation: 'cinemaTitleIn 0.9s ease',
+        }}>
+          <div style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: 'clamp(32px, 7vw, 60px)',
+            fontWeight: 700, color: '#F5F0E8',
+            textShadow: '0 2px 30px rgba(0,0,0,0.9)',
+            letterSpacing: 6, textTransform: 'uppercase',
+          }}>
+            London
+          </div>
+          <div style={{
+            color: 'rgba(200,164,90,0.75)', fontSize: 13,
+            letterSpacing: 5, marginTop: 10, textTransform: 'uppercase',
+          }}>
+            51°30′N · 0°7′W
+          </div>
+        </div>
+      )}
+
+      {/* Billy phone notification on taxi */}
+      {phase === PHASE.TAXI && (
+        <div style={{
+          position: 'absolute', top: '14%', right: '6%', maxWidth: 230,
+          background: 'rgba(10,8,4,0.88)', border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 16, padding: '14px 16px',
+          backdropFilter: 'blur(16px)',
+          animation: 'cinemaFadeIn 0.5s ease',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <img src="/assets/characters/billy_neutral.png" alt=""
+              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(200,164,90,0.4)' }}
+              onError={e => e.target.style.display = 'none'}
+            />
+            <div>
+              <div style={{ color: '#F5F0E8', fontSize: 13, fontWeight: 600 }}>Billy</div>
+              <div style={{ color: 'rgba(200,164,90,0.6)', fontSize: 10, letterSpacing: 1 }}>now</div>
+            </div>
+          </div>
+          <div style={{ color: 'rgba(245,240,232,0.85)', fontSize: 13, lineHeight: 1.55 }}>
+            {BILLY_LINE}
+          </div>
+        </div>
+      )}
+
+      {/* Subtitle */}
+      <div style={{
+        position: 'absolute', bottom: '12%', left: '50%', transform: 'translateX(-50%)',
+        width: '88%', maxWidth: 560, textAlign: 'center',
+        opacity: subtitleOn ? 1 : 0, transition: 'opacity 0.45s ease',
+        zIndex: 5,
+      }}>
+        <span style={{
+          background: 'rgba(0,0,0,0.72)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6, color: '#F5F0E8',
+          fontSize: 'clamp(14px, 3.2vw, 17px)',
+          fontStyle: 'italic', lineHeight: 1.65,
+          padding: '10px 18px', display: 'inline-block',
+        }}>
+          {subtitle}
+        </span>
+      </div>
+
+      {/* Skip hint */}
+      {skippable && (
+        <div style={{
+          position: 'absolute', bottom: '10%', right: 24,
+          color: 'rgba(255,255,255,0.3)', fontSize: 11, letterSpacing: 2.5,
+          textTransform: 'uppercase',
+        }}>
+          Tap to skip
+        </div>
+      )}
+
+      <style>{`
+        @keyframes cinemaDrift {
+          from { transform: scale(1) translateX(0); }
+          to   { transform: scale(1.06) translateX(-14px); }
+        }
+        @keyframes cinemaFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes cinemaTitleIn {
+          from { opacity: 0; transform: translate(-50%, -45%); }
+          to   { opacity: 1; transform: translate(-50%, -55%); }
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+      `}</style>
     </div>
   )
 }
